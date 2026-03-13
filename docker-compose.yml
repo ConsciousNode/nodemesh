@@ -1,0 +1,59 @@
+# NodeMesh Docker Compose Configuration
+# Optional: For users who prefer Docker deployment
+#
+# NOTE: This is for the coordinator only. Workers run natively on
+# their respective platforms (Linux/Windows/Android).
+#
+# Usage:
+#   docker-compose up -d
+
+version: '3.8'
+
+services:
+  # NodeMesh Coordinator
+  coordinator:
+    build:
+      context: ./coordinator
+      dockerfile: Dockerfile
+    container_name: nodemesh-coordinator
+    ports:
+      - "${COORDINATOR_PORT:-11434}:11434"
+    environment:
+      - COORDINATOR_HOST=0.0.0.0
+      - COORDINATOR_PORT=11434
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11435}
+      - HEARTBEAT_TIMEOUT=${HEARTBEAT_TIMEOUT:-30}
+    networks:
+      - nodemesh
+    restart: unless-stopped
+    # If Ollama is running in Docker too, use this instead:
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+  # Optional: Ollama in Docker (alternative to host Ollama)
+  # Uncomment if you want Ollama in Docker instead of host
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: nodemesh-ollama
+  #   ports:
+  #     - "11435:11434"
+  #   volumes:
+  #     - ollama-models:/root/.ollama
+  #   networks:
+  #     - nodemesh
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+
+networks:
+  nodemesh:
+    driver: bridge
+
+# volumes:
+#   ollama-models:
+#     driver: local

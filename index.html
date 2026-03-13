@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NodeMesh - Distributed AI Inference Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e94560;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #e94560;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online {
+            background: #00d9ff;
+            box-shadow: 0 0 10px #00d9ff;
+        }
+
+        .status-offline {
+            background: #ff4757;
+            box-shadow: 0 0 10px #ff4757;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .node-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #e94560;
+            transition: all 0.3s ease;
+        }
+
+        .node-card:hover {
+            border-left-color: #00d9ff;
+            background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .node-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .node-platform {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+            text-transform: uppercase;
+        }
+
+        .node-platform.linux { background: rgba(0, 217, 255, 0.2); color: #00d9ff; }
+        .node-platform.windows { background: rgba(0, 150, 255, 0.2); color: #0096ff; }
+        .node-platform.android { background: rgba(61, 220, 132, 0.2); color: #3ddc84; }
+
+        .node-specs {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .spec-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .spec-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .spec-value {
+            font-size: 0.95rem;
+            color: #fff;
+        }
+
+        .load-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .load-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .load-low { background: linear-gradient(90deg, #00d9ff, #00ff88); }
+        .load-medium { background: linear-gradient(90deg, #ffcc00, #ff9500); }
+        .load-high { background: linear-gradient(90deg, #ff4757, #ff0066); }
+
+        .models-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .model-tag {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(0, 217, 255, 0.1);
+            color: #00d9ff;
+            border: 1px solid rgba(0, 217, 255, 0.3);
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            border-radius: 8px;
+            padding: 15px;
+            color: #ff4757;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(233, 69, 96, 0.3);
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .api-endpoints {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .api-endpoint {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .method {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .method-get { background: #00d9ff; color: #000; }
+        .method-post { background: #e94560; color: #fff; }
+
+        .endpoint-path {
+            color: #ccc;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .nodes-grid { grid-template-columns: 1fr; }
+            .node-specs { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NodeMesh</h1>
+            <p class="subtitle">Distributed AI Inference Mesh Dashboard</p>
+        </header>
+
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-nodes">-</div>
+                <div class="stat-label">Nodes Online</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-models">-</div>
+                <div class="stat-label">Total Models</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-requests">-</div>
+                <div class="stat-label">Total Requests</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-conversations">-</div>
+                <div class="stat-label">Active Conversations</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">
+                <span class="status-indicator status-online"></span>
+                Mesh Nodes
+            </h2>
+            <div id="nodes-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading mesh status...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">API Endpoints</h2>
+            <div class="api-endpoints">
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/tags - List available models</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/generate - Generate completion</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/chat - Chat completion</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/mesh/status - Mesh status (this dashboard)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Configuration</h2>
+            <div class="api-endpoints">
+                <p style="color: #888; margin-bottom: 10px;">Point your Ollama-compatible clients to:</p>
+                <code style="color: #00d9ff; font-size: 1rem;">
+                    http://<span id="current-host">localhost</span>:11434
+                </code>
+            </div>
+        </div>
+
+        <p class="refresh-info">Auto-refreshes every 10 seconds</p>
+    </div>
+
+    <script>
+        // Get current host for API calls
+        const API_BASE = window.location.origin;
+        
+        // Update displayed host
+        document.getElementById('current-host').textContent = window.location.hostname;
+
+        // Format bytes to human readable
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Format RAM
+        function formatRAM(mb) {
+            if (mb >= 1024) {
+                return (mb / 1024).toFixed(1) + ' GB';
+            }
+            return mb + ' MB';
+        }
+
+        // Get load color class
+        function getLoadClass(load) {
+            if (load === 0) return 'load-low';
+            if (load <= 2) return 'load-medium';
+            return 'load-high';
+        }
+
+        // Render a node card
+        function renderNode(node) {
+            const isOnline = node.is_online;
+            const statusClass = isOnline ? 'status-online' : 'status-offline';
+            const platformClass = `node-platform ${node.capabilities.platform}`;
+            
+            // Count unique models
+            const modelCount = node.capabilities.model_count || 0;
+            
+            return `
+                <div class="node-card">
+                    <div class="node-header">
+                        <div>
+                            <span class="status-indicator ${statusClass}"></span>
+                            <span class="node-name">${node.name}</span>
+                        </div>
+                        <span class="${platformClass}">${node.capabilities.platform}</span>
+                    </div>
+                    
+                    <div class="node-specs">
+                        <div class="spec-item">
+                            <span class="spec-label">CPU</span>
+                            <span class="spec-value">${node.capabilities.cpu_model.substring(0, 30)}${node.capabilities.cpu_model.length > 30 ? '...' : ''}</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Cores</span>
+                            <span class="spec-value">${node.capabilities.cpu_cores}</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">RAM</span>
+                            <span class="spec-value">${formatRAM(node.capabilities.total_ram_mb)}</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">GPU</span>
+                            <span class="spec-value">${node.capabilities.has_gpu ? (node.capabilities.gpu_model || 'Yes') : 'None'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="spec-item">
+                        <span class="spec-label">Current Load: ${node.current_load} active requests</span>
+                        <div class="load-bar">
+                            <div class="load-fill ${getLoadClass(node.current_load)}" 
+                                 style="width: ${Math.min(node.current_load * 20, 100)}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <span class="spec-label">Models Available: ${modelCount}</span>
+                    </div>
+                    
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: #666;">
+                        Last seen: ${new Date(node.last_heartbeat * 1000).toLocaleTimeString()}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fetch and display mesh status
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/mesh/status`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update stats
+                const onlineNodes = data.nodes.filter(n => n.is_online).length;
+                document.getElementById('stat-nodes').textContent = `${onlineNodes}/${data.nodes.length}`;
+                document.getElementById('stat-requests').textContent = data.coordinator.stats.total_requests.toLocaleString();
+                document.getElementById('stat-conversations').textContent = data.conversations;
+                
+                // Count total models across all nodes
+                let totalModels = 0;
+                const seenModels = new Set();
+                data.nodes.forEach(node => {
+                    totalModels += node.capabilities.model_count || 0;
+                });
+                document.getElementById('stat-models').textContent = totalModels;
+                
+                // Render nodes
+                const nodesContainer = document.getElementById('nodes-container');
+                if (data.nodes.length === 0) {
+                    nodesContainer.innerHTML = `
+                        <div class="error-message">
+                            No nodes registered in the mesh yet.
+                            Start worker agents on other devices to add them.
+                        </div>
+                    `;
+                } else {
+                    nodesContainer.innerHTML = `
+                        <div class="nodes-grid">
+                            ${data.nodes.map(renderNode).join('')}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                document.getElementById('nodes-container').innerHTML = `
+                    <div class="error-message">
+                        Failed to connect to NodeMesh coordinator.<br>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Initial fetch
+        fetchStatus();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(fetchStatus, 10000);
+    </script>
+</body>
+</html>
